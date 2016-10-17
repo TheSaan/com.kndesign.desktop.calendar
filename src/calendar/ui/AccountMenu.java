@@ -6,28 +6,30 @@
 package calendar.ui;
 
 import calendar.database.CalendarDB;
+import calendar.database.CalendarSqLiteDB;
 import calendar.handler.Account;
 import java.awt.event.ItemEvent;
 import java.awt.event.ItemListener;
 import java.util.Vector;
 import javax.swing.BoxLayout;
 import javax.swing.JCheckBox;
-import javax.swing.JPanel;
+import javax.swing.JCheckBoxMenuItem;
+import javax.swing.JMenu;
 
 /**
  *
  * @author mknoefler
  */
-public class AccountPanel extends JPanel {
+public class AccountMenu extends JMenu {
 
-    Vector<JCheckBox> accountLabels;
+    Vector<JCheckBoxMenuItem> accountLabels;
     Vector<Account> accounts;
     CalendarDB database;
 
-    public AccountPanel(Vector<Account> accounts, CalendarDB db) {
+    public AccountMenu(String title,Vector<Account> accounts, CalendarSqLiteDB db) {
+        super(title);
         database = db;
         setLayout(new BoxLayout(this, BoxLayout.Y_AXIS));
-        setVisible(true);
         update(accounts);
     }
 
@@ -43,25 +45,31 @@ public class AccountPanel extends JPanel {
      * @param layout
      */
     private void addCalendars() {
-        accountLabels = new Vector<JCheckBox>();
+        accountLabels = new Vector<JCheckBoxMenuItem>();
 
         int len = accounts.size();
 
         for (int i = 0; i < len; i++) {
             Account a = accounts.elementAt(i);
-            accountLabels.add(new JCheckBox(a.getName(), a.isDefault()));
-            JCheckBox check = accountLabels.elementAt(i);
+            accountLabels.add(new JCheckBoxMenuItem(a.getName(), a.isDefault()));
+            
+            JCheckBoxMenuItem check = accountLabels.elementAt(i);
+            
             accountLabels.elementAt(i).addItemListener(new ItemListener() {
                 public void itemStateChanged(ItemEvent e) {
                     boolean is = check.isSelected();
                     if (is) {
                         //first make the last default account false
-                        database.insert("UPDATE calendars SET default_account=" + !is + " WHERE default_account=" + is);
+                        database.update("UPDATE "+CalendarDB.TABLE_ACCOUNTS+" SET default_account='" + !is + "' WHERE default_account='" + is+"'");
 
                         //now set the new one to true
-                        database.insert("UPDATE calendars SET default_account=" + is + " WHERE id='" + a.getId()+"'");
+                        database.update("UPDATE "+CalendarDB.TABLE_ACCOUNTS+" SET default_account='" + is + "' WHERE id='" + a.getId()+"'");
                         
                         update(accounts);
+                        
+                        check.setSelected(is);
+                    }else{
+                        check.setSelected(!is);
                     }
                 }
             });

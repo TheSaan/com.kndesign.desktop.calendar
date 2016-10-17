@@ -1,6 +1,7 @@
 package calendar.ui;
 
 import calendar.database.CalendarDB;
+import calendar.database.CalendarSqLiteDB;
 import javax.swing.*;
 import javax.swing.border.Border;
 
@@ -68,11 +69,13 @@ public class NewAppointmentWindow extends JFrame {
     Pattern pattern;
     Matcher matcher;
     CalendarDB database;
-
+    Calendar calendar;
+    
     // Constructor
 
-    public NewAppointmentWindow(String titel, CalendarDB db) {
+    public NewAppointmentWindow(String titel, CalendarSqLiteDB db, Calendar cal) {
         super(titel);
+        calendar = cal;
         database = db;
         blackline = BorderFactory.createLineBorder(Color.BLACK);
         invalidMonthErrorLabel = new JLabel();
@@ -239,6 +242,10 @@ public class NewAppointmentWindow extends JFrame {
         }
 
         try {
+            if(calendar != null){
+                calendar.setVisible(true);
+                calendar.refresh(false);
+            }
             this.finalize();
         } catch (Throwable ex) {
             Logger.getLogger(NewAppointmentWindow.class.getName()).log(Level.SEVERE, null, ex);
@@ -382,7 +389,7 @@ public class NewAppointmentWindow extends JFrame {
 
     private void fillAccountList() {
         try {
-            ResultSet rs = database.query("SELECT * FROM calendars");
+            ResultSet rs = database.query("SELECT * FROM "+CalendarDB.TABLE_ACCOUNTS);
             accountList = new JComboBox<>();
             accounts = new Vector<Account>();
 

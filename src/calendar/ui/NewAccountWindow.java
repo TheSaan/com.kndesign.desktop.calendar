@@ -46,7 +46,7 @@ public class NewAccountWindow extends JFrame {
         setLayout(new BoxLayout(getContentPane(), BoxLayout.Y_AXIS));
 
         calendar = cal;
-        
+
         jtfName = new JTextField();
         jtfUrl = new JTextField();
 
@@ -60,7 +60,7 @@ public class NewAccountWindow extends JFrame {
 
 //        Adding colors to list
         colors = ColorHandler.getUniqueColors(numColors);
-        
+
         //@see http://stackoverflow.com/questions/13671666/changing-the-colour-of-jcombobox-selected-item-permanantly
 //        Vector<JLabel> labelTmp = new Vector<JLabel>();
 //        
@@ -72,10 +72,8 @@ public class NewAccountWindow extends JFrame {
 //            labelTmp.add(label);
 //        }
 //        colorList = new JComboBox<JLabel>(labelTmp);
-        
-        
         setListeners();
-        
+
         add(name);
         add(jtfName);
 //        add(color);
@@ -83,21 +81,21 @@ public class NewAccountWindow extends JFrame {
         add(cbIsDefault);
         add(save);
         add(abort);
-        
+
         setVisible(true);
-        setSize(300,150);
+        setSize(300, 150);
         setLocation(500, 350);
-        
+
     }
 
-    private void setListeners(){
+    private void setListeners() {
         save.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
                 save();
             }
         });
-        
+
         abort.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
@@ -105,11 +103,17 @@ public class NewAccountWindow extends JFrame {
             }
         });
     }
+
     private void newAccount(String name, Color c, String url, boolean isdefault) {
 
         String id = Account.createId(database);
         String color;
 
+        char defAcc = '0';
+        
+        if(isdefault)
+            defAcc = '1';
+        
         if (c == null) {
             //if no hex set, get a random color
             color = ColorHandler.getUniqueColors(1).elementAt(0).toString();
@@ -118,7 +122,7 @@ public class NewAccountWindow extends JFrame {
         }
         System.out.print(color);
         String q
-                = "INSERT INTO calendars ("
+                = "INSERT INTO " + CalendarDB.TABLE_ACCOUNTS + " ("
                 + "id, "
                 + "name, "
                 + "color, "
@@ -129,26 +133,26 @@ public class NewAccountWindow extends JFrame {
                 + "','" + name
                 + "','" + color
                 + "','" + url
-                + "'," + isdefault 
-                + ") ";
+                + "','" + defAcc
+                + "') ";
 
-        database.insert(q);
-        
-        String newTable = 
-                "CREATE TABLE "+id
-                +" ("
-                +"name VARCHAR(150),"
-                +"description VARCHAR(400),"
-                +"startdate DATE,"
-                +"enddate DATE,"
-                +"starttime TIME,"
-                +"endtime TIME,"
-                +"fullday BOOLEAN,"
-                +"guests VARCHAR(5000)"
-                +")";
-        
-        database.insert(newTable);
-        
+        database.update(q);
+
+        String newTable
+                = "CREATE TABLE " + id
+                + " ("
+                + "name VARCHAR(150),"
+                + "description VARCHAR(400),"
+                + "startdate DATE,"
+                + "enddate DATE,"
+                + "starttime TIME,"
+                + "endtime TIME,"
+                + "fullday BOOLEAN,"
+                + "guests VARCHAR(5000)"
+                + ")";
+
+        database.update(newTable);
+
         System.out.println("");
     }
 
@@ -157,18 +161,18 @@ public class NewAccountWindow extends JFrame {
 
 //            int colorIndex = colorList.getSelectedIndex();
 //            Color c = colors.elementAt(colorIndex);
-            int max = colors.size()-1;
+            int max = colors.size() - 1;
             //get random color
             Color c = colors.elementAt(RandomHandler.createIntegerFromRange(0, max, new Random()));
-            newAccount(jtfName.getText(),c, jtfUrl.getText(), cbIsDefault.isSelected());
+            newAccount(jtfName.getText(), c, jtfUrl.getText(), cbIsDefault.isSelected());
             calendar.calendarsAvailable(true);
             calendar.refresh(false);
             close();
-            
+
         }
     }
 
-    private void close(){
+    private void close() {
         dispatchEvent(new WindowEvent(this, WindowEvent.WINDOW_CLOSING));
     }
 }

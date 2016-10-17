@@ -1,6 +1,7 @@
 package calendar.ui;
 
 import calendar.database.CalendarDB;
+import calendar.database.CalendarSqLiteDB;
 import calendar.database.DBConnect;
 import java.awt.Color;
 import java.awt.FlowLayout;
@@ -47,7 +48,7 @@ public class Calendar extends JFrame {
     CalendarPanel cpanel;
     CalendarHeaderPanel hpanel;
     DayNameHeader dpanel;
-    AccountPanel apanel;
+    AccountMenu accountMenu;
     Colors c;
     JPanel p;
 
@@ -69,11 +70,14 @@ public class Calendar extends JFrame {
     int newYearSelection;
     int past, future;
 
-    static String host = "jdbc:derby://localhost:1527/CalendarDB;create=true";
+    //derby db
+//    static String host = "jdbc:derby://localhost:1527/CalendarDB;create=true";
+    //sqllite db
+    static String host = "jdbc:sqlite:/home/mknoefler/NetBeansProjects/Calendar/src/calendar/database/calendar.sqlite";
     static String user = "mknoefler";
     static String pwd = "latinrce44";
 
-    CalendarDB db;
+    CalendarSqLiteDB db;
 
     //represents the different calendars
     Vector<Account> accounts;
@@ -83,6 +87,8 @@ public class Calendar extends JFrame {
         super(titel);
         setDatabase(dbc);
         setResizable(true);
+        
+        setAutoRequestFocus(true);
         //on start set the first account as standard
         //NOTE: default account gets set by database
 //        account = new Account(db, getFirstAccount(), true);
@@ -123,15 +129,16 @@ public class Calendar extends JFrame {
         if (!calendarSet()) {
             new NewAccountWindow(db, this);
         }
-        if (accounts != null) {
+
+        if (accounts != null && accounts.size() > 0) {
             for (Account a : accounts) {
                 if (a.isDefault()) {
                     currentAccount = a;
                 }
             }
         }
+
         initUI();
-        apanel.update(updateAccounts());
         buildUI();
 
     }
@@ -152,26 +159,36 @@ public class Calendar extends JFrame {
         // /////////////////////////////////////////////////
         currentMonthLabel = new JLabel("");
 
+        accounts = updateAccounts();
+        if (accounts.size() > 0) {
+            calAvailable = true;
+        }
+        accountMenu = new AccountMenu("Accounts", accounts, db);
+
         dpanel = new DayNameHeader();
         cpanel = new CalendarPanel(this);
         hpanel = new CalendarHeaderPanel();
-        apanel = new AccountPanel(accounts, db);
 
         //Menubar
         menubar = new JMenuBar();
+
         file = new JMenu("Datei");
         file_newAccount = new JMenuItem("Neuer Kalender");
 
         file.add(file_newAccount);
         edit = new JMenu("Bearbeiten");
+
         menubar.add(file);
         menubar.add(edit);
+        menubar.add(accountMenu);
 
         setJMenuBar(menubar);
-        setLayout(new FlowLayout());
-        setSize(1080, 668);
+        setLayout(new BorderLayout());
+//        setSize(1920, 1080);
+// Set the JFrame to maximize by default on opening
+        setExtendedState(JFrame.MAXIMIZED_BOTH);
         setVisible(true);
-        setResizable(false);
+        setResizable(true);
         setBackground(Color.DARK_GRAY);
 
         addListeners();
@@ -179,8 +196,7 @@ public class Calendar extends JFrame {
     }
 
     private boolean calendarSet() {
-        ResultSet rs = db.query("SELECT * FROM calendars");
-        if (db.count(rs) > 0) {
+        if (db.getAccountsCount(CalendarDB.TABLE_ACCOUNTS) > 0) {
             return true;
         } else {
             return false;
@@ -209,11 +225,10 @@ public class Calendar extends JFrame {
         hpanel.setSize(this.getSize().width, this.getSize().height);
         headers.add(hpanel);
         headers.add(dpanel);
-        contents.add(apanel);
         contents.add(cpanel);
 
-        add(headers, BorderLayout.EAST);
-        add(contents);
+        add(headers, BorderLayout.NORTH);
+        add(contents, BorderLayout.CENTER);
     }
 
     private void selectToday(CalendarPanel cp) {
@@ -280,7 +295,7 @@ public class Calendar extends JFrame {
             @Override
             public void actionPerformed(ActionEvent arg0) {
                 NewAppointmentWindow naw = new NewAppointmentWindow(
-                        "Neuen Termin", db);
+                        "Neuen Termin erstellen", db,c);
 
             }
         });
@@ -372,10 +387,10 @@ public class Calendar extends JFrame {
     }
 
     private void setDatabase(DBConnect dbc) {
-        db = new CalendarDB(dbc);
+        db = new CalendarSqLiteDB(dbc);
     }
 
-    protected CalendarDB getDatabase() {
+    protected CalendarSqLiteDB getDatabase() {
         return db;
     }
 
@@ -383,7 +398,7 @@ public class Calendar extends JFrame {
         calAvailable = av;
     }
 
-    public boolean getCalendarAvailable() {
+    public boolean isCalendarAvailable() {
         return calAvailable;
     }
 

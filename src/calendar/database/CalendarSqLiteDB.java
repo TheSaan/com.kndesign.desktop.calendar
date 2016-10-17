@@ -12,14 +12,14 @@ import java.sql.DriverManager;
  *
  * @author mknoefler
  */
-public class CalendarSqlLiteDB extends CalendarDB {
+public class CalendarSqLiteDB extends CalendarDB {
 
-    public CalendarSqlLiteDB(DBConnect dbc) {
+    public CalendarSqLiteDB(DBConnect dbc) {
         super(dbc);
         Connection c = null;
         try {
             Class.forName("org.sqlite.JDBC");
-            c = DriverManager.getConnection("jdbc:sqlite:Calendar");
+            c = DriverManager.getConnection("jdbc:sqlite:/home/mknoefler/NetBeansProjects/Calendar/src/calendar/database/calendar.sqlite ");
         } catch (Exception e) {
             System.err.println(e.getClass().getName() + ": " + e.getMessage());
             System.exit(0);

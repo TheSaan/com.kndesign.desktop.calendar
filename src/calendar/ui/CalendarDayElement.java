@@ -40,14 +40,14 @@ public class CalendarDayElement extends JPanel {
     JLabel currentDayLabel;
     JLabel moreMeetingsLabel;
     ///meetings shown on the dayelement field
-    Vector<JLabel> meetings;
+    Vector<EntryLabel> meetings;
     //Container for the appointment list
     JPanel appointmentListContainerPanel;
 
     //Actual position of the whole panel element
     Vector<Integer> coordinates;
 
-    final static int MAX_MEETINGS_ON_FIELD = 2;
+    final static int MAX_MEETINGS_ON_FIELD = 6;
     
     //Constructor
     public CalendarDayElement(int column, int row, int id) {
@@ -86,7 +86,7 @@ public class CalendarDayElement extends JPanel {
             moreMeetingsLabel.setText("");
     }
     
-    public void setList(Vector<JLabel> meetings){
+    public void setList(Vector<EntryLabel> meetings){
         if(meetings != null && meetings.size() > 0){
             
             this.meetings = meetings;
@@ -143,8 +143,8 @@ public class CalendarDayElement extends JPanel {
      *
      * @return
      */
-    public int[] getDate() {
-        return new int[]{day, month, year};
+    public java.sql.Date getDate() {
+        return new java.sql.Date(year-1900,month-1,day);
     }
 
     /*

@@ -7,12 +7,16 @@ package calendar.database;
 
 import calendar.handler.Account;
 import calendar.handler.Appointment;
+import calendar.ui.Calendar;
 import java.sql.Connection;
 import java.sql.Date;
+import java.sql.Time;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.Vector;
@@ -23,15 +27,27 @@ import java.util.Vector;
  * @author mknoefler
  */
 public class CalendarDB {
+
     private int numberOfAccounts = 0;
     private Connection connection;
+    DBConnect dbConnect;
+
+    public final static String TABLE_ACCOUNTS = "accounts";
 
     public CalendarDB(DBConnect dbc) {
         if (dbc != null && dbc.isConnected()) {
+            dbConnect = dbc;
             connection = dbc.getConnection();
         }
     }
 
+    /**
+     *
+     * @param date
+     * @param calendar
+     * @return
+     * @throws SQLException
+     */
     public int getNumberOfMeetingsForDay(int[] date, String calendar) throws SQLException {
         String d2 = date[0] + "-" + date[1] + "-" + date[2];
         java.sql.Date formatDate = new Date(date[2] - 1900, date[1] - 1, date[0]);
@@ -49,26 +65,32 @@ public class CalendarDB {
         return c;
     }
 
-    public Vector<String> getMeetingsList(int[] date, String calendar) {
+    /**
+     *
+     * @param date
+     * @param account
+     * @return
+     */
+    public Vector<String> getMeetingsList(Date date, String account) {
 
         Vector<String> list = new Vector<String>();
 
         try {
-            java.sql.Date formatDate = new Date(date[2] - 1900, date[1] - 1, date[0]);
-
-            String d = formatDate.toString();
-
-            String q = "SELECT * FROM " + calendar + " WHERE startdate ='" + d + "'";
+            String d = date.toString();
+            String q = "SELECT * FROM " + account + " WHERE startdate ='" + d + "'";
 
             ResultSet rs = query(q);
 
             while (rs.next()) {
                 //get time and remove seconds
-                String time = rs.getTime("starttime").toString();
-                String[] clock = time.split(":");
-                time = clock[0] + ":" + clock[1];
-
-                list.add(time + " " + rs.getString("name"));
+//                Time time = rs.getDate("starttime");
+                String time = rs.getString("starttime");
+                String[] times = time.split(":");
+                time = times[0]+":"+times[1];
+                
+                String s = time+ " " + rs.getString("name");
+//                System.out.println(s);
+                list.add(s);
             }
 
             return list;
@@ -78,38 +100,46 @@ public class CalendarDB {
         }
     }
 
-    public Vector<Account> getAccounts(){
+    /**
+     *
+     * @return
+     */
+    public Vector<Account> getAccounts() {
         try {
-            ResultSet rs = query("SELECT * FROM calendars");
-            int count = count(rs);
-            
+            int i = 0;
+
             Vector<Account> vec = new Vector<Account>();
-                        
-            for(int i = 0; i < count; i++){
+            ResultSet rs = query("SELECT * FROM  " + TABLE_ACCOUNTS);
+
+            while(rs.next()){
                 String s = rs.getString("id");
-                vec.add(new Account(this,s));
-                System.out.println((i)+" Records Exist: "+ s); 
+                vec.add(new Account(this, s));
+                System.out.println((i++ + 1) + " Record(s) Exist: " + s);
+                
             }
-            
+
             numberOfAccounts = vec.size();
-            
+
             return vec;
         } catch (SQLException ex) {
             Logger.getLogger(CalendarDB.class.getName()).log(Level.SEVERE, null, ex);
             return null;
         }
     }
-    
-    public int getAccountCount(){
-        return numberOfAccounts;
-    }
-    
+
+    /**
+     *
+     * @param query
+     * @return
+     */
     public ResultSet query(String query) {
         try {
             Statement stmt;
 
-            stmt = connection.createStatement(ResultSet.TYPE_SCROLL_SENSITIVE, ResultSet.CONCUR_UPDATABLE);
-            return stmt.executeQuery(query);
+            stmt = connection.createStatement();
+            ResultSet rs = stmt.executeQuery(query);
+//            stmt.close();
+            return rs;
 
         } catch (SQLException ex) {
             Logger.getLogger(CalendarDB.class.getName()).log(Level.SEVERE, null, ex);
@@ -118,9 +148,14 @@ public class CalendarDB {
 
     }
 
-    public void insert(String query) {
+    /**
+     *
+     * @param query
+     */
+    public void update(String query) {
         try {
-            Statement stmt = connection.createStatement(ResultSet.TYPE_SCROLL_SENSITIVE, ResultSet.CONCUR_UPDATABLE);
+//            reconnect();
+            Statement stmt = connection.createStatement(ResultSet.TYPE_FORWARD_ONLY, ResultSet.CONCUR_READ_ONLY);
             stmt.executeUpdate(query);
 
         } catch (SQLException ex) {
@@ -128,8 +163,12 @@ public class CalendarDB {
         }
 
     }
-    
 
+    /**
+     *
+     * @param query
+     * @return
+     */
     public ResultSet first(String query) {
 
         try {
@@ -179,47 +218,109 @@ public class CalendarDB {
                 + ") VALUES ("
                 + "'" + app.getTitle()
                 + "','" + app.getDescription()
-                + "','" + app.getFromDate().toString() + "','"
-                + app.getFromTime().toString() + "','"
+                + "','" + app.getFromDate() + "','"
+                + app.getFromTime() + "','"
                 + toDateStr + "','"
                 + toTimeStr + "','"
                 + guests + "'"
                 + ") ";
-        insert(q);
+        update(q);
     }
 
+    /**
+     * Simply loops via next() and counts (quiet unefficient).
+     *
+     * @param rs
+     * @return Amount of rows.
+     */
     public int count(ResultSet rs) {
         try {
-            return rs.last() ? rs.getRow() : 0;
+            int i = 0;
+            while (rs.next()) {
+                i++;
+            }
+            return i;
         } catch (SQLException ex) {
             Logger.getLogger(CalendarDB.class.getName()).log(Level.SEVERE, null, ex);
             return -1;
         }
     }
 
-    public Account getStandardAccount(){
+    /**
+     *
+     * @return
+     */
+    public Account getStandardAccount() {
         try {
-            ResultSet rs = query("SELECT * FROM calendars WHERE default_account=true");
+            ResultSet rs = query("SELECT * FROM " + TABLE_ACCOUNTS + " WHERE default_account=true");
             rs.next();
-            return new Account(this,rs.getString("id"));
+            return new Account(this, rs.getString("id"));
         } catch (SQLException ex) {
             Logger.getLogger(CalendarDB.class.getName()).log(Level.SEVERE, null, ex);
             return null;
         }
     }
-    
-    public void setStandardAccount(){
-        
+
+    /**
+     *
+     */
+    public void setStandardAccount() {
+
     }
-    
-    public boolean isIdAvailable(String comparedID){
+
+    /**
+     *
+     * @param comparedID
+     * @return
+     */
+    public boolean isIdAvailable(String comparedID) {
         try {
-            ResultSet rs = query("SELECT * FROM calendars WHERE id='"+comparedID+"'");
+            ResultSet rs = query("SELECT * FROM " + TABLE_ACCOUNTS + " WHERE id='" + comparedID + "'");
             return rs.next();
         } catch (SQLException ex) {
             Logger.getLogger(CalendarDB.class.getName()).log(Level.SEVERE, null, ex);
-            System.err.println("Maybe Record available, but ERROR thrown [CalendarDB.isIdAvailable("+comparedID+")");
+            System.err.println("Maybe Record available, but ERROR thrown [CalendarDB.isIdAvailable(" + comparedID + ")");
             return false;
         }
+    }
+
+    /**
+     *
+     * @param accountTable
+     * @return
+     */
+    public int getAccountsCount(String accountTable) {
+
+        try {
+            PreparedStatement p = connection.prepareStatement("SELECT * FROM " + accountTable);
+
+            //Store it also in the variable 
+            numberOfAccounts = count(p.executeQuery());
+
+            return numberOfAccounts;
+        } catch (SQLException ex) {
+            Logger.getLogger(CalendarDB.class.getName()).log(Level.SEVERE, null, ex);
+            return 0;
+        }
+    }
+
+    /**
+     * Uses an Exception when the table was not found it will return false.
+     *
+     * @return
+     */
+    public boolean accountsTableCreated() {
+        try {
+            ResultSet rs = query("SELECT * FROM " + TABLE_ACCOUNTS);
+            rs.next();
+            return true;
+        } catch (SQLException ex) {
+            Logger.getLogger(CalendarDB.class.getName()).log(Level.SEVERE, null, ex);
+            return false;
+        }
+    }
+    
+    private void reconnect(){
+        connection = dbConnect.getConnection();
     }
 }
