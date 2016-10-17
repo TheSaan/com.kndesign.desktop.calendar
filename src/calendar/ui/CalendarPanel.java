@@ -1,6 +1,6 @@
 package calendar.ui;
 
-import calendar.database.CalendarDB;
+import calendar.database.CalendarSqLiteDB;
 import java.awt.Color;
 import java.awt.GridLayout;
 import java.util.Vector;
@@ -14,8 +14,11 @@ import com.kndesign.common.*;
 import calendar.graphics.Dimensions;
 import calendar.handler.Account;
 import java.awt.Font;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import java.util.Date;
 
 public class CalendarPanel extends JPanel {
 
@@ -48,9 +51,11 @@ public class CalendarPanel extends JPanel {
     // Object[][] calData =
     CalendarPanel(Calendar c) {
         calendar = c;
+
         init();
         setLayout(new GridLayout(0, 7));
-        setPreferredSize(dims.DIM_CALENDAR_PANEL_SIZE);
+//        setPreferredSize(dims.DIM_CALENDAR_PANEL_SIZE);
+
         setBackground(Color.BLUE);
 
     }
@@ -186,18 +191,22 @@ public class CalendarPanel extends JPanel {
          */
         elementTracker = dayInCalendar;// count from first day
 
+        int dayFontSize = 20;
         for (int i = dayInCalendar; i < daysOfThisMonth + elementTracker; i++) {
             CalendarDayElement d = dayElements.elementAt(i);
-
+            JLabel label = d.currentDayLabel;
             d.setDate(i, month, year);
 
+            Font labelFont = label.getFont();
+            label.setFont(new Font(labelFont.getName(), Font.PLAIN, dayFontSize));
+
             if (firstDay == 1) {
-                d.currentDayLabel.setText("" + firstDay);
+                label.setText("" + firstDay);
                 d.setDate(firstDay, month, year);
                 firstDay++;
             } else {
 
-                d.currentDayLabel.setText("" + nextDay);
+                label.setText("" + nextDay);
                 d.setDate(nextDay, month, year);
                 nextDay++;
 
@@ -239,7 +248,8 @@ public class CalendarPanel extends JPanel {
             }
         }
 
-        if (calendar.getCalendarAvailable()) {
+        boolean calSet = calendar.isCalendarAvailable();
+        if (calSet) {
             //fill with meetings
             for (int i = 0; i < dayElements.size(); i++) {
                 setMeetingsList(dayElements.elementAt(i));
@@ -251,30 +261,46 @@ public class CalendarPanel extends JPanel {
 
     private void setMeetingsList(CalendarDayElement d) {
 
-        try {
-            //add number of meetings for this day as big sized number
-            CalendarDB db = calendar.getDatabase();
+        //add number of meetings for this day as big sized number
+        CalendarSqLiteDB db = calendar.getDatabase();
 
-            Vector<Account> accounts = calendar.getAccounts();
-            int numAccounts = accounts.size();
+        Vector<Account> accounts = calendar.getAccounts();
 
-            if (numAccounts > 0) {
-                for (Account a : accounts) {
-                    //get a vektor of all meeting titles
-                    Vector<String> titles = db.getMeetingsList(d.getDate(), a.getName());
+        Vector<EntryLabel> meetings = new Vector<EntryLabel>();
 
-//            int numMeetings = titles.size();
-                    Vector<JLabel> meetings = new Vector<JLabel>();
+        Vector<String> titles = new Vector<>();
+        int numAccounts = accounts.size();
 
-                    int meetingsFontSize = 11;
+        if (numAccounts > 0) {
+            //put all meetings of this day into one list (for all accounts)
+            for (Account a : accounts) {
+                //get a vektor of all meeting titles
+                titles.addAll(db.getMeetingsList(d.getDate(), a.getId()));
+            }
 
-                    for (String s : titles) {
-                        meetings.add(new JLabel(s));
-                    }
-                    for (JLabel meeting : meetings) {
-                        Font labelFont = meeting.getFont();
-                        meeting.setFont(new Font(labelFont.getName(), Font.PLAIN, meetingsFontSize));
-                    }
+            if (titles.size() > 0) {
+                System.out.println("Show meetings unsorted:");
+                for (String str : titles) {
+                    System.out.println(str);
+                }
+                //sort by time
+                titles = sortAfterTime(titles);
+                System.out.println("Show meetings sorted:");
+
+                for (String str : titles) {
+                    System.out.println(str);
+                }
+
+                for (String s : titles) {
+                    meetings.add(new EntryLabel(s,db));
+                }
+
+                int meetingsFontSize = 10;
+
+                for (JLabel meeting : meetings) {
+                    Font labelFont = meeting.getFont();
+                    meeting.setFont(new Font(labelFont.getName(), Font.PLAIN, meetingsFontSize));
+                }
 
 //            String labelText = "";
 //            
@@ -284,12 +310,157 @@ public class CalendarPanel extends JPanel {
 //                else
 //                    labelText = titles.elementAt(0);
 //            }
-                    d.setList(meetings);
-                }
+                d.setList(meetings);
             }
-        } catch (Exception ex) {
-            Logger.getLogger(CalendarPanel.class.getName()).log(Level.SEVERE, null, ex);
         }
+
+    }
+
+    /**
+     * Sorts the account meetings after their times
+     *
+     * @param list
+     * @return
+     */
+    private Vector<String> sortAfterTime(Vector<String> list) {
+        //regex to cut out the wanted time format
+        String regex = "[0-2]{1}[0-9]{1}+[:]+[0-5]{1}[0-9]{1}";
+
+        //only stores the times
+        Vector<java.util.Date> times = new Vector<>();
+
+        SimpleDateFormat parser = new SimpleDateFormat("HH:mm");
+        Vector<String> names = new Vector<String>();
+        //parse string list to Date list
+        for (String s : list) {
+            try {
+                times.add(parser.parse(s));
+                names.add(s.split(regex)[1]);
+//                System.out.println("Test:\t" + s);
+            } catch (ParseException ex) {
+                Logger.getLogger(CalendarPanel.class
+                        .getName()).log(Level.SEVERE, null, ex);
+            }
+        }
+
+        Vector<java.util.Date> sortedDates = new Vector<java.util.Date>();
+
+        //will get sorted beside the dates
+        Vector<String> sortedNames = new Vector<String>();
+
+        //1. split out the times
+
+        /*
+                Always searching for the most recent and add it to a new  List
+         */
+        int numTimes = times.size();
+
+        Date first, second, smallest;
+
+        while (!times.isEmpty()) {
+            second = null;
+            smallest = null;
+
+            int indexToRemove = 0;
+
+            if (numTimes == 1) {//in case only one item is left
+                //cut last object
+                sortedDates.add(times.elementAt(0));
+                sortedNames.add(names.elementAt(0));
+                names.remove(0);
+                times.remove(0);
+                numTimes = times.size();
+            } else if (numTimes == 2) {//in case two items left
+                int i = 0;
+                first = times.elementAt(0);
+                second = times.elementAt(1);
+                if (first.after(second)) {
+                    smallest = second;
+                    i = 1;
+                } else {
+                    smallest = first;
+                }
+
+                sortedDates.add(smallest);
+                sortedNames.add(names.elementAt(i));
+                names.remove(i);
+                times.remove(i);
+                numTimes = times.size();
+            } else if (numTimes > 2) {//handles more than 2 objects
+
+                for (int m = 0; m < numTimes - 1; m++) {
+                    first = times.elementAt(m);
+                    //prevent IndexOutOfBoundsException
+//                    if (m < numTimes) {
+                    second = times.elementAt(m + 1);
+//                    }
+                    //look for the smalles time and cut it into the new list
+
+                    //when the current is later then one of the next
+                    //set the l-cursor to this further time value and
+                    //start from there
+                    if (first.after(second)) {
+                        //set the next smallest value
+                        if (smallest != null) {
+                            if (smallest.after(second)) {
+                                smallest = second;
+                                indexToRemove++;
+                            }
+                        } else {
+                            smallest = second;
+                        }
+                        indexToRemove++;
+                    } else {
+                        if (smallest != null) {
+                            if (smallest.after(first)) {
+                                smallest = first;
+                            }
+                        } else {
+                            smallest = first;
+                        }
+                    }
+
+                }
+
+                sortedDates.add(smallest);
+                sortedNames.add(names.elementAt(indexToRemove));
+                names.remove(indexToRemove);
+                times.remove(indexToRemove);
+                indexToRemove = 0;
+                numTimes = times.size();
+
+            }
+        }
+
+        list.removeAllElements();
+
+        
+        for (int i = 0; i < sortedDates.size();i++) {
+            Date da = sortedDates.elementAt(i);
+            String n = sortedNames.elementAt(i);
+
+            String sp1 = da.toString().split(regex)[0];
+//            System.out.println(sp1);
+            String sp2 = da.toString().split(regex)[1];
+//            System.out.println(sp2);
+            String s = da.toString().split(sp1)[1];
+            s = s.split(sp2)[0];
+
+            list.add(s +" "+n);
+        }
+
+        //add the names in the correct order
+        //parse string list to Date list
+        for (String s : list) {
+            try {
+                times.add(parser.parse(s));
+
+            } catch (ParseException ex) {
+                Logger.getLogger(CalendarPanel.class
+                        .getName()).log(Level.SEVERE, null, ex);
+            }
+        }
+        return list;
     }
 
     public void update() {
