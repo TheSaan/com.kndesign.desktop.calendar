@@ -88,6 +88,9 @@ public class NewAccountWindow extends JFrame {
 
     }
 
+    /**
+     *
+     */
     private void setListeners() {
         save.addActionListener(new ActionListener() {
             @Override
@@ -104,21 +107,29 @@ public class NewAccountWindow extends JFrame {
         });
     }
 
+    /**
+     *
+     * @param name
+     * @param c
+     * @param url
+     * @param isdefault
+     */
     private void newAccount(String name, Color c, String url, boolean isdefault) {
 
         String id = Account.createId(database);
         String color;
 
         char defAcc = '0';
-        
-        if(isdefault)
+
+        if (isdefault) {
             defAcc = '1';
-        
+        }
+
         if (c == null) {
             //if no hex set, get a random color
-            color = ColorHandler.getUniqueColors(1).elementAt(0).toString();
+            color = String.valueOf(ColorHandler.getUniqueColors(1).elementAt(0).getRGB());
         } else {
-            color = c.toString();
+            color = String.valueOf(c.getRGB());
         }
         System.out.print(color);
         String q
@@ -141,6 +152,7 @@ public class NewAccountWindow extends JFrame {
         String newTable
                 = "CREATE TABLE " + id
                 + " ("
+                + "id INTEGER PRIMARY KEY AUTOINCREMENT,"
                 + "name VARCHAR(150),"
                 + "description VARCHAR(400),"
                 + "startdate DATE,"
@@ -156,6 +168,9 @@ public class NewAccountWindow extends JFrame {
         System.out.println("");
     }
 
+    /**
+     *
+     */
     private void save() {
         if (name.getText() != "") {
 
@@ -165,13 +180,22 @@ public class NewAccountWindow extends JFrame {
             //get random color
             Color c = colors.elementAt(RandomHandler.createIntegerFromRange(0, max, new Random()));
             newAccount(jtfName.getText(), c, jtfUrl.getText(), cbIsDefault.isSelected());
-            calendar.calendarsAvailable(true);
-            calendar.refresh(false);
-            close();
+
+            if (calendar != null) {
+                calendar.calendarsAvailable(true);
+                calendar.setVisible(true);
+                calendar.update();
+                calendar = new Calendar("Kalender", calendar.getConnection());
+
+            }
+            dispose();
 
         }
     }
 
+    /**
+     *
+     */
     private void close() {
         dispatchEvent(new WindowEvent(this, WindowEvent.WINDOW_CLOSING));
     }

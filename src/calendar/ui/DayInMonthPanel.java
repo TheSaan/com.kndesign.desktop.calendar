@@ -16,7 +16,7 @@ import calendar.graphics.Dimensions;
 import java.awt.BorderLayout;
 import javax.swing.BoxLayout;
 
-public class CalendarDayElement extends JPanel {
+public class DayInMonthPanel extends JPanel {
 
     Bounds b;
     DateHandler date;
@@ -48,11 +48,11 @@ public class CalendarDayElement extends JPanel {
     Vector<Integer> coordinates;
 
     final static int MAX_MEETINGS_ON_FIELD = 6;
-    
+
     //Constructor
-    public CalendarDayElement(int column, int row, int id) {
+    public DayInMonthPanel(int column, int row, int id) {
         setLayout(new BoxLayout(this, BoxLayout.Y_AXIS));
-        
+
         greyline = BorderFactory.createLineBorder(Color.LIGHT_GRAY);
         b = new Bounds();
         date = new DateHandler();
@@ -74,38 +74,51 @@ public class CalendarDayElement extends JPanel {
 
         add(currentDayLabel, BorderLayout.PAGE_START);
     }
-    //Setters
-    //////////////////////////
-    public void clear(){
-        if(meetings != null){
+
+    /**
+     *
+     */
+    public void clear() {
+        if (meetings != null) {
             for (JLabel meeting : meetings) {
                 meeting.setText("");
             }
         }
-        if(moreMeetingsLabel != null)
+        if (moreMeetingsLabel != null) {
             moreMeetingsLabel.setText("");
+        }
     }
-    
-    public void setList(Vector<EntryLabel> meetings){
-        if(meetings != null && meetings.size() > 0){
-            
+
+    /**
+     *
+     * @param meetings
+     */
+    public void setList(Vector<EntryLabel> meetings) {
+        if (meetings != null && meetings.size() > 0) {
+
             this.meetings = meetings;
             for (int i = 0; i < MAX_MEETINGS_ON_FIELD && i < meetings.size(); i++) {
                 add(meetings.elementAt(i));
             }
             int more = meetings.size() - MAX_MEETINGS_ON_FIELD;
-            
+
             String moreText = "";
-            
-            if(more > 0){
+
+            if (more > 0) {
                 moreText = "+" + more + " mehr...";
-            }else{
+            } else {
                 moreText = "";
             }
             moreMeetingsLabel = new JLabel(moreText);
             add(moreMeetingsLabel);
         }
     }
+
+    /**
+     *
+     * @param column
+     * @param row
+     */
     public void setPosition(int column, int row) {
         coordinates = b.CalendarDayElementSize;
         //+1 for the borders, otherwise they will cross eachother
@@ -114,21 +127,39 @@ public class CalendarDayElement extends JPanel {
         this.posY = coordinates.elementAt(1) * row;
     }
 
+    /**
+     *
+     * @param day
+     * @param month
+     * @param year
+     */
     public void setDate(int day, int month, int year) {
         this.day = day;
         this.month = month;
         this.year = year;
     }
 
+    /**
+     *
+     * @param hour
+     * @param minute
+     */
     public void setTime(int hour, int minute) {
         this.hour = hour;
         this.minute = minute;
     }
 
+    /**
+     *
+     * @param a
+     */
     public void addAppointment(Appointment a) {
 
     }
 
+    /**
+     *
+     */
     private void setupContent() {
 
         String currentDateView = day + "\t\t\n"; 	//later +holiday
@@ -138,22 +169,17 @@ public class CalendarDayElement extends JPanel {
         this.add(appointmentListContainerPanel);
     }
 
-
     /**
      *
      * @return
      */
     public java.sql.Date getDate() {
-        return new java.sql.Date(year-1900,month-1,day);
+        return new java.sql.Date(year - 1900, month - 1, day);
     }
 
-    /*
-	 pre implementation
-	 
-	  setDayOfWeekName(date.getDayOfWeekAt(this.day,this.month,this.year,"de");
-
-	 
-	 * */
+    /**
+     *
+     */
     public void setDayOfWeekName() {
         dayName = date.getDayOfWeekAt(day, month, year, "de");
     }

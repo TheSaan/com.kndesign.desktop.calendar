@@ -70,9 +70,8 @@ public class NewAppointmentWindow extends JFrame {
     Matcher matcher;
     CalendarDB database;
     Calendar calendar;
-    
-    // Constructor
 
+    // Constructor
     public NewAppointmentWindow(String titel, CalendarSqLiteDB db, Calendar cal) {
         super(titel);
         calendar = cal;
@@ -96,18 +95,6 @@ public class NewAppointmentWindow extends JFrame {
         buttonABORT = new JButton("Abbrechen");
         buttonADD_EMAIL = new JButton("Empfaenger hinzufuegen");
         buttonSAVE = new JButton("Speichern");
-//		buttonSAVE.addActionListener(new ActionListener() {
-//
-//			@Override
-//			public void actionPerformed(ActionEvent arg0) {
-//				if (isDaySelectionCorrect(Integer.parseInt(comboBoxDAY.getSelectedItem().toString()))) {
-//					labelDAY.setForeground(Color.BLACK);
-//				} else {
-//					labelDAY.setForeground(Color.RED);
-//				}
-//
-//			}
-//		});
 
         labelDate = new JLabel("bis");
 
@@ -185,6 +172,9 @@ public class NewAppointmentWindow extends JFrame {
 
     }
 
+    /**
+     *
+     */
     private void addActionListeners() {
 
         ActionListener emailListener = new ActionListener() {
@@ -212,7 +202,7 @@ public class NewAppointmentWindow extends JFrame {
 
             @Override
             public void actionPerformed(ActionEvent arg0) {
-                close();
+                dispose();
 
             }
         });
@@ -220,6 +210,9 @@ public class NewAppointmentWindow extends JFrame {
 
     }
 
+    /**
+     *
+     */
     public void save() {
         // date as integer container
         java.sql.Date fromD, toD = null;
@@ -242,9 +235,9 @@ public class NewAppointmentWindow extends JFrame {
         }
 
         try {
-            if(calendar != null){
+            if (calendar != null) {
                 calendar.setVisible(true);
-                calendar.refresh(false);
+                calendar.update();
             }
             this.finalize();
         } catch (Throwable ex) {
@@ -321,6 +314,9 @@ public class NewAppointmentWindow extends JFrame {
         }
     }
 
+    /**
+     *
+     */
     private void checkMails() {
         pattern = Pattern
                 .compile("^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+.[a-zA-Z]{2,7}$");
@@ -352,6 +348,9 @@ public class NewAppointmentWindow extends JFrame {
 
     }
 
+    /**
+     *
+     */
     private void setTodayTimeAndDate() {
         int y = DateHandler.currYear;
         int m = DateHandler.currMonth;
@@ -387,9 +386,12 @@ public class NewAppointmentWindow extends JFrame {
         jtfTimeTo.setText(sh2 + ":" + smin);
     }
 
+    /**
+     *
+     */
     private void fillAccountList() {
         try {
-            ResultSet rs = database.query("SELECT * FROM "+CalendarDB.TABLE_ACCOUNTS);
+            ResultSet rs = database.query("SELECT * FROM " + CalendarDB.TABLE_ACCOUNTS);
             accountList = new JComboBox<>();
             accounts = new Vector<Account>();
 
@@ -407,13 +409,14 @@ public class NewAppointmentWindow extends JFrame {
         }
     }
 
+    /**
+     *
+     * @return
+     */
     private Account getSelectedAccount() {
 
         return accounts.elementAt(accountList.getSelectedIndex());
 
     }
 
-    private void close() {
-        dispatchEvent(new WindowEvent(this, WindowEvent.WINDOW_CLOSING));
-    }
 }

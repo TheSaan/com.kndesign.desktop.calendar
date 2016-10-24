@@ -1,6 +1,7 @@
 package calendar.ui;
 
 import calendar.database.CalendarSqLiteDB;
+import calendar.graphics.Colors;
 import java.awt.Color;
 import java.awt.GridLayout;
 import java.util.Vector;
@@ -41,7 +42,7 @@ public class CalendarPanel extends JPanel {
     // amount of day elements in calendar
     final byte AMOUNT_DAY_ELEMENTS = 35;
 
-    Vector<CalendarDayElement> dayElements = new Vector<CalendarDayElement>();
+    Vector<DayInMonthPanel> dayElements = new Vector<DayInMonthPanel>();
 
     JLabel meetingsList = null;
 
@@ -60,16 +61,24 @@ public class CalendarPanel extends JPanel {
 
     }
 
-    // TODO make init to boolean to check if everything has loaded correctly
+    /**
+     *
+     */
     private void init() {
         addListeners();
         buildMonthView();
     }
 
+    /**
+     *
+     */
     private void addListeners() {
 
     }
 
+    /**
+     *
+     */
     private void buildMonthView() {
         int fields = 1;
 
@@ -83,7 +92,7 @@ public class CalendarPanel extends JPanel {
 
                 column = j + 1;
                 row = i + 1;
-                dayElements.addElement(new CalendarDayElement(column, row,
+                dayElements.addElement(new DayInMonthPanel(column, row,
                         fields));
 
                 this.add(dayElements.elementAt(j + m));
@@ -94,6 +103,9 @@ public class CalendarPanel extends JPanel {
         addDateContent();
     }
 
+    /**
+     *
+     */
     protected void addDateContent() {
 
         /*
@@ -121,7 +133,7 @@ public class CalendarPanel extends JPanel {
 
         //clear all elements 
         for (int i = 0; i < dayElements.size(); i++) {
-            CalendarDayElement d = dayElements.elementAt(i);
+            DayInMonthPanel d = dayElements.elementAt(i);
             d.clear();
         }
 
@@ -171,7 +183,7 @@ public class CalendarPanel extends JPanel {
          */
         for (int i = dayInCalendar; i > 0; i--) {
             int j = i - 1;
-            CalendarDayElement d = dayElements.elementAt(j);
+            DayInMonthPanel d = dayElements.elementAt(j);
 
             //add date for db usage
             d.setDate(daysOfLastMonth, month - 1, year);
@@ -181,7 +193,7 @@ public class CalendarPanel extends JPanel {
             d.currentDayLabel.setForeground(Color
                     .decode("#A4A4A4"));
 
-            d.setBackground(Color.decode("#D8D8D8"));
+            d.setBackground(Color.decode(Colors.HEX_OF_BRIGHT_GREY));
 
             daysOfLastMonth--;
         }
@@ -193,7 +205,7 @@ public class CalendarPanel extends JPanel {
 
         int dayFontSize = 20;
         for (int i = dayInCalendar; i < daysOfThisMonth + elementTracker; i++) {
-            CalendarDayElement d = dayElements.elementAt(i);
+            DayInMonthPanel d = dayElements.elementAt(i);
             JLabel label = d.currentDayLabel;
             d.setDate(i, month, year);
 
@@ -211,6 +223,10 @@ public class CalendarPanel extends JPanel {
                 nextDay++;
 
                 // if end of month start next month counting
+            }
+
+            if (i == DateHandler.currDay && month == DateHandler.currMonth) {
+                dayElements.elementAt(i + elementTracker - 1).setBackground(Color.decode(Colors.HEX_OF_TODAY_BLUE));
             }
 
             dayInCalendar++;
@@ -259,11 +275,22 @@ public class CalendarPanel extends JPanel {
         isFirstDayInMonth = false;
     }
 
-    private void setMeetingsList(CalendarDayElement d) {
+    /**
+     *
+     */
+    public void updateContent() {
+        addDateContent();
+    }
+
+    /**
+     *
+     * @param d
+     */
+    private void setMeetingsList(DayInMonthPanel d) {
 
         //add number of meetings for this day as big sized number
         CalendarSqLiteDB db = calendar.getDatabase();
-
+        db.setCalendar(calendar);
         Vector<Account> accounts = calendar.getAccounts();
 
         Vector<EntryLabel> meetings = new Vector<EntryLabel>();
@@ -273,43 +300,15 @@ public class CalendarPanel extends JPanel {
 
         if (numAccounts > 0) {
             //put all meetings of this day into one list (for all accounts)
+            int tmp = 0;
             for (Account a : accounts) {
-                //get a vektor of all meeting titles
-                titles.addAll(db.getMeetingsList(d.getDate(), a.getId()));
+                meetings.addAll(db.getMeetingsList(d.getDate(), a.getId(), 0));
             }
 
-            if (titles.size() > 0) {
-                System.out.println("Show meetings unsorted:");
-                for (String str : titles) {
-                    System.out.println(str);
-                }
-                //sort by time
-                titles = sortAfterTime(titles);
-                System.out.println("Show meetings sorted:");
+            if (meetings.size() > 0) {
+//                
+                meetings = sorts(meetings);
 
-                for (String str : titles) {
-                    System.out.println(str);
-                }
-
-                for (String s : titles) {
-                    meetings.add(new EntryLabel(s,db));
-                }
-
-                int meetingsFontSize = 10;
-
-                for (JLabel meeting : meetings) {
-                    Font labelFont = meeting.getFont();
-                    meeting.setFont(new Font(labelFont.getName(), Font.PLAIN, meetingsFontSize));
-                }
-
-//            String labelText = "";
-//            
-//            if(numMeetings > 0){
-//                if(numMeetings > 1)
-//                    labelText = titles.elementAt(0)+"\n+"+(numMeetings-1)+" more...";            
-//                else
-//                    labelText = titles.elementAt(0);
-//            }
                 d.setList(meetings);
             }
         }
@@ -317,152 +316,45 @@ public class CalendarPanel extends JPanel {
     }
 
     /**
-     * Sorts the account meetings after their times
      *
      * @param list
      * @return
      */
-    private Vector<String> sortAfterTime(Vector<String> list) {
-        //regex to cut out the wanted time format
-        String regex = "[0-2]{1}[0-9]{1}+[:]+[0-5]{1}[0-9]{1}";
+    private Vector<EntryLabel> sorts(Vector<EntryLabel> list) {
+        try {
+            SimpleDateFormat parser = new SimpleDateFormat("HH:mm");
 
-        //only stores the times
-        Vector<java.util.Date> times = new Vector<>();
+            Date first, second;
 
-        SimpleDateFormat parser = new SimpleDateFormat("HH:mm");
-        Vector<String> names = new Vector<String>();
-        //parse string list to Date list
-        for (String s : list) {
-            try {
-                times.add(parser.parse(s));
-                names.add(s.split(regex)[1]);
-//                System.out.println("Test:\t" + s);
-            } catch (ParseException ex) {
-                Logger.getLogger(CalendarPanel.class
-                        .getName()).log(Level.SEVERE, null, ex);
-            }
-        }
+            int loopCounts = 1;
+            for (int i = 0; i < list.size() - 1; i++) {
+                first = parser.parse(list.elementAt(i).getText());
+                second = parser.parse(list.elementAt(i + 1).getText());
+                EntryLabel firstElement = list.elementAt(i);
+                EntryLabel secondElement = list.elementAt(i + 1);
 
-        Vector<java.util.Date> sortedDates = new Vector<java.util.Date>();
-
-        //will get sorted beside the dates
-        Vector<String> sortedNames = new Vector<String>();
-
-        //1. split out the times
-
-        /*
-                Always searching for the most recent and add it to a new  List
-         */
-        int numTimes = times.size();
-
-        Date first, second, smallest;
-
-        while (!times.isEmpty()) {
-            second = null;
-            smallest = null;
-
-            int indexToRemove = 0;
-
-            if (numTimes == 1) {//in case only one item is left
-                //cut last object
-                sortedDates.add(times.elementAt(0));
-                sortedNames.add(names.elementAt(0));
-                names.remove(0);
-                times.remove(0);
-                numTimes = times.size();
-            } else if (numTimes == 2) {//in case two items left
-                int i = 0;
-                first = times.elementAt(0);
-                second = times.elementAt(1);
+                //swith them
                 if (first.after(second)) {
-                    smallest = second;
-                    i = 1;
-                } else {
-                    smallest = first;
+                    list.add(i, secondElement);
+                    //remove second
+                    list.remove(i + 2);
+                    i = -1;
                 }
-
-                sortedDates.add(smallest);
-                sortedNames.add(names.elementAt(i));
-                names.remove(i);
-                times.remove(i);
-                numTimes = times.size();
-            } else if (numTimes > 2) {//handles more than 2 objects
-
-                for (int m = 0; m < numTimes - 1; m++) {
-                    first = times.elementAt(m);
-                    //prevent IndexOutOfBoundsException
-//                    if (m < numTimes) {
-                    second = times.elementAt(m + 1);
-//                    }
-                    //look for the smalles time and cut it into the new list
-
-                    //when the current is later then one of the next
-                    //set the l-cursor to this further time value and
-                    //start from there
-                    if (first.after(second)) {
-                        //set the next smallest value
-                        if (smallest != null) {
-                            if (smallest.after(second)) {
-                                smallest = second;
-                                indexToRemove++;
-                            }
-                        } else {
-                            smallest = second;
-                        }
-                        indexToRemove++;
-                    } else {
-                        if (smallest != null) {
-                            if (smallest.after(first)) {
-                                smallest = first;
-                            }
-                        } else {
-                            smallest = first;
-                        }
-                    }
-
-                }
-
-                sortedDates.add(smallest);
-                sortedNames.add(names.elementAt(indexToRemove));
-                names.remove(indexToRemove);
-                times.remove(indexToRemove);
-                indexToRemove = 0;
-                numTimes = times.size();
-
             }
-        }
 
-        list.removeAllElements();
+//            System.out.println("New sort method output:\n");
+//            for (EntryLabel label : list) {
+//                System.out.println(label.getText());
+//            }
+        } catch (ParseException e) {
 
-        
-        for (int i = 0; i < sortedDates.size();i++) {
-            Date da = sortedDates.elementAt(i);
-            String n = sortedNames.elementAt(i);
-
-            String sp1 = da.toString().split(regex)[0];
-//            System.out.println(sp1);
-            String sp2 = da.toString().split(regex)[1];
-//            System.out.println(sp2);
-            String s = da.toString().split(sp1)[1];
-            s = s.split(sp2)[0];
-
-            list.add(s +" "+n);
-        }
-
-        //add the names in the correct order
-        //parse string list to Date list
-        for (String s : list) {
-            try {
-                times.add(parser.parse(s));
-
-            } catch (ParseException ex) {
-                Logger.getLogger(CalendarPanel.class
-                        .getName()).log(Level.SEVERE, null, ex);
-            }
         }
         return list;
     }
 
+    /**
+     *
+     */
     public void update() {
         addDateContent();
     }

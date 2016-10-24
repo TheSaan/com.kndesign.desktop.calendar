@@ -33,6 +33,10 @@ public class AccountMenu extends JMenu {
         update(accounts);
     }
 
+    /**
+     * 
+     * @param accounts 
+     */
     public void update(Vector<Account> accounts) {
         this.accounts = accounts;
         this.removeAll();

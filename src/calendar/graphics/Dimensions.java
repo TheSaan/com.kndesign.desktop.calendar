@@ -2,6 +2,10 @@ package calendar.graphics;
 
 import java.awt.Dimension;
 
+/**
+ * Defines multiple sizes, which can be used as defaults
+ * @author mknoefler
+ */
 public class Dimensions {
 
 	//NEW APPOINTMENT WINDOW

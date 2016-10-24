@@ -8,21 +8,19 @@ package calendar.database;
 import calendar.handler.Account;
 import calendar.handler.Appointment;
 import calendar.ui.Calendar;
+import java.awt.Color;
 import java.sql.Connection;
 import java.sql.Date;
-import java.sql.Time;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
-import java.text.ParseException;
-import java.text.SimpleDateFormat;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.Vector;
 
 /**
- * This class returns explicit results from database for the calendar
+ * This class returns explicit results from database for the {@link Calendar}
  *
  * @author mknoefler
  */
@@ -31,7 +29,7 @@ public class CalendarDB {
     private int numberOfAccounts = 0;
     private Connection connection;
     DBConnect dbConnect;
-
+    Calendar calendar;
     public final static String TABLE_ACCOUNTS = "accounts";
 
     public CalendarDB(DBConnect dbc) {
@@ -86,9 +84,9 @@ public class CalendarDB {
 //                Time time = rs.getDate("starttime");
                 String time = rs.getString("starttime");
                 String[] times = time.split(":");
-                time = times[0]+":"+times[1];
-                
-                String s = time+ " " + rs.getString("name");
+                time = times[0] + ":" + times[1];
+
+                String s = time + " " + rs.getString("name");
 //                System.out.println(s);
                 list.add(s);
             }
@@ -111,11 +109,11 @@ public class CalendarDB {
             Vector<Account> vec = new Vector<Account>();
             ResultSet rs = query("SELECT * FROM  " + TABLE_ACCOUNTS);
 
-            while(rs.next()){
+            while (rs.next()) {
                 String s = rs.getString("id");
                 vec.add(new Account(this, s));
                 System.out.println((i++ + 1) + " Record(s) Exist: " + s);
-                
+
             }
 
             numberOfAccounts = vec.size();
@@ -319,8 +317,86 @@ public class CalendarDB {
             return false;
         }
     }
-    
-    private void reconnect(){
+
+    /**
+     *
+     * @param cal
+     */
+    public void setCalendar(Calendar cal) {
+        calendar = cal;
+    }
+
+    /**
+     *
+     * @return
+     */
+    public Calendar getCalendar() {
+        return calendar;
+    }
+
+    /**
+     *
+     * @param account
+     * @param id
+     * @return
+     */
+    public ResultSet getAppointment(String account, int id) {
+
+        try {
+            PreparedStatement p = connection.prepareStatement("SELECT * FROM " + account + " WHERE id=?");
+            p.setInt(1, id);
+            return p.executeQuery();
+        } catch (SQLException ex) {
+            Logger.getLogger(CalendarDB.class.getName()).log(Level.SEVERE, null, ex);
+            return null;
+        }
+    }
+
+    /**
+     *
+     * @param account
+     * @param id
+     */
+    public void deleteAppointment(String account, int id) {
+
+        try {
+            PreparedStatement p = connection.prepareStatement("DELETE FROM " + account + " WHERE id=?");
+            p.setInt(1, id);
+            p.executeUpdate();
+        } catch (SQLException ex) {
+            Logger.getLogger(CalendarDB.class.getName()).log(Level.SEVERE, null, ex);
+        }
+    }
+
+    /**
+     *
+     * @param accountID
+     * @return
+     */
+    public String getAccountName(String accountID) {
+        try {
+            return query("SELECT name FROM " + TABLE_ACCOUNTS + " WHERE id='" + accountID + "'").getString("name");
+        } catch (SQLException ex) {
+            Logger.getLogger(CalendarDB.class.getName()).log(Level.SEVERE, null, ex);
+            return "kein Name gefunden";
+        }
+    }
+
+    /**
+     *
+     * @param account
+     * @return
+     */
+    public Color getAccountForegroundColor(String account) {
+        try {
+            return Color.decode(query("SELECT color FROM " + TABLE_ACCOUNTS + " WHERE id='" + account + "'").getString("color"));
+        } catch (SQLException ex) {
+            Logger.getLogger(CalendarDB.class.getName()).log(Level.SEVERE, null, ex);
+            return Color.BLACK;
+        }
+    }
+
+    private void reconnect() {
         connection = dbConnect.getConnection();
     }
 }
